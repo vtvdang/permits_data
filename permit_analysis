@@ -1,0 +1,58 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# Load in file
+file_path = 'permits.csv'
+df = pd.read_csv(file_path)
+
+# Edit column names for readability
+df.columns = df.columns.str.strip().str.replace(' ', '_').str.replace(',', '')
+
+# Parse dates and edit costs
+df['Permit_Issuance_Date'] = pd.to_datetime(df['Permit_Issuance_Date'], errors='coerce')
+df['Expected_Construction_Cost'] = pd.to_numeric(df['Expected_Construction_Cost'], errors='coerce')
+
+# Extract year from date if missing
+if 'Permit_Case_Year' not in df.columns or df['Permit_Case_Year'].isnull().all():
+    df['Permit_Case_Year'] = df['Permit_Issuance_Date'].dt.year
+
+# Drop rows with missing Permit Category or Year
+df = df.dropna(subset=['Permit_Category', 'Permit_Case_Year'])
+
+# Analysis 1: Permits per Year 
+permits_per_year = df.groupby('Permit_Case_Year').size()
+permits_per_year.plot(kind='bar', title='Permits Issued Per Year', figsize=(10, 5))
+plt.xlabel('Year')
+plt.ylabel('Number of Permits')
+plt.tight_layout()
+plt.show()
+
+# Analysis 2: Total Construction Cost per Year 
+cost_per_year = df.groupby('Permit_Case_Year')['Expected_Construction_Cost'].sum()
+cost_per_year.plot(kind='line', marker='o', title='Total Construction Cost Per Year', figsize=(10, 5))
+plt.xlabel('Year')
+plt.ylabel('Total Cost ($)')
+plt.tight_layout()
+plt.show()
+
+# Analysis 3: Top ZIP Codes by Permit Volume 
+top_zips = df['Zip_Code'].value_counts().head(10)
+top_zips.plot(kind='bar', title='Top 10 ZIP Codes by Permit Volume', figsize=(10, 5))
+plt.xlabel('ZIP Code')
+plt.ylabel('Number of Permits')
+plt.tight_layout()
+plt.show()
+
+# Analysis 4: Residential vs Commercial Over Time 
+pivot_category = df.pivot_table(index='Permit_Case_Year', columns='Permit_Category', values='Permit_Case_ID', aggfunc='count')
+pivot_category.plot(kind='bar', stacked=True, title='Permit Category Trends Over Time', figsize=(10, 5))
+plt.xlabel('Year')
+plt.ylabel('Permit Count')
+plt.tight_layout()
+plt.show()
+
+# Analysis 5: Top 10 Largest Projects 
+top_projects = df.nlargest(10, 'Expected_Construction_Cost')[[
+    'Case_Name', 'Expected_Construction_Cost', 'Street_Address', 'City', 'Permit_Issuance_Date']]
+print("Top 10 Largest Projects by Expected Cost:")
+print(top_projects.to_string(index=False))
